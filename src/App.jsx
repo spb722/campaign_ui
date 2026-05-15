@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { parseCampaign } from "./api.js";
+import { sendChatMessage } from "./api.js";
 import { transformApiResponse } from "./dataTransform.js";
-import { buildAgentTrace, buildFollowupReplies, buildFollowups, EXAMPLE_PROMPTS } from "./mockData.js";
+import { buildActivitySteps, buildLoadingSteps, buildFollowups, EXAMPLE_PROMPTS } from "./mockData.js";
 import { Icon, Pill, Mono, Dot } from "./components/atoms.jsx";
 import { Chat } from "./components/Chat.jsx";
 import { Topbar } from "./components/Topbar.jsx";
@@ -12,6 +12,12 @@ import { ContentView } from "./components/ContentView.jsx";
 import { ValidationView } from "./components/ValidationView.jsx";
 import { ExportView } from "./components/ExportView.jsx";
 import { WhyDrawer } from "./components/WhyDrawer.jsx";
+
+const VIEW_MAP = {
+  recommended_segments: "segments",
+  segment_drilldown: "segments",
+  chat: null,
+};
 
 // ── Color helpers ─────────────────────────────────────────────────────────────
 function parseHex(hex) {
@@ -30,16 +36,11 @@ function shade(hex, amt) {
   return `rgb(${adj(r)},${adj(g)},${adj(b)})`;
 }
 
-function guessIntent(text) {
-  const s = text.toLowerCase();
-  if (/why.*(push|whatsapp|sms|channel)/.test(s)) return "channel-why";
-  if (/regenerate|redo.*content/.test(s)) return "regen";
-  if (/inactive|churn/.test(s)) return "filter";
-  if (/rulebook|why.*tactic/.test(s)) return "rulebook";
-  return null;
-}
-
 export default function App() {
+  // Session
+  const [sessionId] = useState(() => crypto.randomUUID());
+  const [currentCampaignId, setCurrentCampaignId] = useState(null);
+
   // Campaign state
   const [campaignData, setCampaignData] = useState(null);
 
@@ -82,57 +83,19 @@ export default function App() {
     };
   }, [dragging]);
 
-  // Replay agent trace animation
-  const runTrace = (steps, onDone) => {
-    let i = 0;
-    setActiveStep(0);
-    const tick = () => {
-      if (i >= steps.length) {
-        setRunning(false);
-        setActiveStep(steps.length);
-        onDone?.();
-        return;
-      }
-      setActiveStep(i);
-      const dur = Math.min(700, Math.max(150, steps[i].ms / 4));
-      i += 1;
-      setTimeout(tick, dur);
-    };
-    tick();
-  };
-
-  const sendMessage = async (text, intent) => {
+  const sendMessage = async (text) => {
     if (!text || running) return;
 
     const userMsg = { id: `u-${Date.now()}`, role: "user", text };
     setDraft("");
     setRunning(true);
 
-    // Check if this is a follow-up (only valid when campaign already loaded)
-    const resolvedIntent = intent || guessIntent(text);
-    const followupReplies = campaignData ? buildFollowupReplies(campaignData) : {};
-
-    if (campaignData && resolvedIntent && followupReplies[resolvedIntent]) {
-      const template = { ...followupReplies[resolvedIntent], id: `a-${Date.now()}`, role: "agent" };
-      setMessages((prev) => [...prev, userMsg, template]);
-      runTrace(template.trace, () => {
-        if (template.artifacts) {
-          const segArt = template.artifacts.find((a) => a.kind === "seg");
-          const tabArt = template.artifacts.find((a) => a.kind === "tab");
-          if (segArt) { setTab("segments"); setSelectedSegId(segArt.id); }
-          if (tabArt) setTab(tabArt.id);
-        }
-      });
-      return;
-    }
-
-    // Full campaign parse via API
-    const trace = buildAgentTrace(null);
+    const loadingSteps = buildLoadingSteps();
     const agentMsg = {
       id: `a-${Date.now()}`,
       role: "agent",
-      trace,
-      traceTotal: `${trace.length} tools`,
+      trace: loadingSteps,
+      traceTotal: `${loadingSteps.length} steps`,
       text: null,
       artifacts: null,
       advisories: 0,
@@ -141,52 +104,70 @@ export default function App() {
     setMessages((prev) => [...prev, userMsg, agentMsg]);
 
     try {
-      // Animate trace while API call is in flight
+      // Animate loading steps while API call is in flight
       const tracePromise = new Promise((resolve) => {
         let i = 0;
         setActiveStep(0);
         const tick = () => {
-          if (i >= trace.length) { resolve(); return; }
+          if (i >= loadingSteps.length) { resolve(); return; }
           setActiveStep(i);
-          const dur = Math.min(700, Math.max(150, trace[i].ms / 4));
           i += 1;
-          setTimeout(tick, dur);
+          setTimeout(tick, 400);
         };
         tick();
       });
 
-      const [apiResult] = await Promise.all([parseCampaign(text), tracePromise]);
+      const [response] = await Promise.all([
+        sendChatMessage(sessionId, text, currentCampaignId),
+        tracePromise,
+      ]);
 
-      const data = transformApiResponse(apiResult);
-      const enrichedTrace = buildAgentTrace(data);
+      const { response_type, message, data, ui_action } = response;
+      const activitySteps = buildActivitySteps(response);
 
-      const totalImpact = data.totalImpact?.toFixed(0) || "—";
-      const segCount = data.segments.length;
-      const totalUsers = data.totalUsers?.toLocaleString() || "—";
-      const advisories = (data.validations || []).filter((v) => v.level === "advisory").length;
+      if (response_type === "campaign_plan" || response_type === "plan_updated") {
+        const newData = transformApiResponse({ data: data?.campaign_plan });
 
-      const finalArtifacts = data.segments.slice(0, 5).map((s) => ({
-        kind: "seg", id: s.id, label: s.name,
-      }));
+        const totalImpact = newData.totalImpact?.toFixed(0) || "—";
+        const segCount = newData.segments.length;
+        const totalUsers = newData.totalUsers?.toLocaleString() || "—";
+        const advisories = (newData.validations || []).filter((v) => v.level === "advisory").length;
+        const finalArtifacts = newData.segments.slice(0, 5).map((s) => ({ kind: "seg", id: s.id, label: s.name }));
 
-      setMessages((prev) => prev.map((m) =>
-        m.id === agentMsg.id
-          ? {
-              ...m,
-              trace: enrichedTrace,
-              traceTotal: `${enrichedTrace.length} tools`,
-              text: `**Plan ready.** ${segCount} segments cover **${totalUsers}** eligible users. Projected **RO ${totalImpact}** incremental revenue.`,
-              artifacts: finalArtifacts,
-              advisories,
-            }
-          : m
-      ));
+        setMessages((prev) => prev.map((m) =>
+          m.id === agentMsg.id
+            ? {
+                ...m,
+                trace: activitySteps,
+                traceTotal: `${activitySteps.length} steps`,
+                text: message || `**Plan ready.** ${segCount} segments cover **${totalUsers}** eligible users. Projected **RO ${totalImpact}** incremental revenue.`,
+                artifacts: finalArtifacts,
+                advisories,
+              }
+            : m
+        ));
 
-      setCampaignData(data);
-      setSelectedSegId(data.segments[0]?.id || null);
-      setTab("segments");
+        setCampaignData(newData);
+        setCurrentCampaignId(newData.campaignId || null);
+
+        if (ui_action?.set_active_view) {
+          const mappedTab = VIEW_MAP[ui_action.set_active_view] ?? ui_action.set_active_view;
+          if (mappedTab) setTab(mappedTab);
+        } else {
+          setTab("segments");
+        }
+        setSelectedSegId(ui_action?.highlight_segment_id || newData.segments[0]?.id || null);
+      } else {
+        // "answer", "clarification", "export_ready" — text only, no canvas change
+        setMessages((prev) => prev.map((m) =>
+          m.id === agentMsg.id
+            ? { ...m, trace: activitySteps, traceTotal: `${activitySteps.length} steps`, text: message, artifacts: null }
+            : m
+        ));
+      }
+
       setRunning(false);
-      setActiveStep(enrichedTrace.length);
+      setActiveStep(activitySteps.length);
     } catch (err) {
       setMessages((prev) => prev.map((m) =>
         m.id === agentMsg.id
@@ -194,7 +175,7 @@ export default function App() {
           : m
       ));
       setRunning(false);
-      setActiveStep(trace.length);
+      setActiveStep(loadingSteps.length);
     }
   };
 

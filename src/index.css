@@ -5,10 +5,10 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --bg:        #FAF7F1;
-  --panel:    #FCFAF5;
-  --surface:  #FFFFFF;
-  --surface-2:#FBF8F2;
+  --bg:        #f4fbff;
+  --panel:     #f4fbff;
+  --surface:   #FFFFFF;
+  --surface-2: #eef7ff;
 
   --ink:       #0E0E0C;
   --ink-2:     #3A3A35;
@@ -65,7 +65,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  background: var(--bg);
+  background: radial-gradient(ellipse at 50% 44%, #fff 0, #f4fbff 100%) fixed;
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -1016,8 +1016,8 @@ button { font-family: inherit; color: inherit; }
   display: inline-grid; place-items: center;
   width: 18px; height: 18px;
   border-radius: 5px;
-  background: var(--accent);
-  color: #fff;
+  background: radial-gradient(ellipse at 50% 44%, #fff 0, #f4fbff 100%);
+  color: #0199ff;
 }
 .agent-mark-lg { width: 26px; height: 26px; border-radius: 6px; }
 
@@ -1196,12 +1196,12 @@ button { font-family: inherit; color: inherit; }
 .send-btn {
   display: inline-grid; place-items: center;
   width: 28px; height: 28px;
-  background: var(--accent); color: #fff;
+  background: #0199ff; color: #fff;
   border: 0; border-radius: 6px;
   cursor: pointer;
   transition: background 120ms;
 }
-.send-btn:hover:not(:disabled) { background: var(--accent-deep); }
+.send-btn:hover:not(:disabled) { background: #0080d6; }
 .send-btn:disabled { background: var(--ink-4); cursor: default; }
 
 /* ── Run history ────────────────────────────────────────────────────────── */

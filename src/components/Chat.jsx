@@ -39,7 +39,7 @@ function InlineTrace({ steps, total, running, activeIdx }) {
     <div className={`itrace ${open ? "is-open" : ""}`}>
       <button className="itrace-head" onClick={() => setOpen((v) => !v)}>
         {running ? <Spinner small /> : <Icon name="cpu" size={11} />}
-        <span className="itrace-label">{running ? "Thinking…" : "Tools used"}</span>
+        <span className="itrace-label">{running ? "Thinking…" : "Agent activity"}</span>
         <span className="itrace-meta mono">{total}</span>
         <span className="itrace-chev"><Icon name={open ? "chevdown" : "chev"} size={11} /></span>
       </button>
@@ -55,8 +55,8 @@ function InlineTrace({ steps, total, running, activeIdx }) {
                   {isActive ? <Spinner small /> : isPending ? <span className="trace-dot-pending" /> : <Dot tone={toneMap[s.status] || "ok"} />}
                 </span>
                 <span className="mono itrace-name">{s.tool}</span>
-                {isDone && <span className="itrace-note">{s.note}</span>}
-                {isDone && <span className="itrace-ms mono">{s.ms}ms</span>}
+                {isDone && s.note && <span className="itrace-note">{s.note}</span>}
+                {isDone && s.ms != null && <span className="itrace-ms mono">{s.ms}ms</span>}
               </div>
             );
           })}
@@ -199,7 +199,7 @@ export function Chat({ messages, running, activeIdx, onSend, onArtifact, suggest
         {showFollowups && suggestions?.length > 0 && (
           <div className="suggestions">
             {suggestions.map((s) => (
-              <button key={s.id} className="suggestion" onClick={() => onSend(s.label, s.intent)}>
+              <button key={s.id} className="suggestion" onClick={() => onSend(s.label)}>
                 {s.label}
               </button>
             ))}

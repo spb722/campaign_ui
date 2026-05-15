@@ -9,95 +9,105 @@ export const EXAMPLE_PROMPTS = [
   "Recommend the best campaign opportunity for this month.",
 ];
 
-// MOCKED: The real API does not expose internal tool call timing or names.
-// Future work: expose a trace/audit log from the backend.
-export const AGENT_TRACE_TEMPLATE = [
-  { tool: "Thinking about the objective",        status: "ok",   ms: 420  },
-  { tool: "Performing rule-book calculations",   status: "ok",   ms: 38   },
-  { tool: "Finding the best segments",           status: "ok",   ms: 64   },
-  { tool: "Reviewing ML models and their scores",status: "ok",   ms: 112  },
-  { tool: "Offering selections",                 status: "ok",   ms: 56   },
-  { tool: "Assembling the campaign plan",        status: "ok",   ms: 1280 },
-  { tool: "Calculating projections",             status: "ok",   ms: 21   },
-  { tool: "Generating campaign content",         status: "ok",   ms: 2140 },
-  { tool: "Validating the campaign",             status: "warn", ms: 18   },
-];
+const ACTIVITY_LABELS = {
+  understanding_request: [
+    "Understanding request",
+    "Reading the user request",
+    "Interpreting the request",
+    "Identifying user intent",
+    "Parsing the latest message",
+  ],
+  finding_context: [
+    "Finding relevant campaign context",
+    "Looking up current campaign context",
+    "Retrieving related campaign details",
+    "Finding the right campaign data",
+    "Locating relevant context",
+  ],
+  reviewing_info: [
+    "Reviewing available info",
+    "Checking available data",
+    "Reviewing campaign details",
+    "Inspecting available signals",
+    "Reading relevant plan information",
+  ],
+  reasoning_options: [
+    "Reasoning over options",
+    "Comparing available options",
+    "Evaluating possible choices",
+    "Weighing alternatives",
+    "Reviewing possible next steps",
+  ],
+  preparing_response: [
+    "Preparing response",
+    "Composing the response",
+    "Summarizing the result",
+    "Preparing the answer",
+    "Building the response",
+  ],
+  updating_state: [
+    "Updating campaign state",
+    "Applying requested changes",
+    "Updating the campaign plan",
+    "Saving the latest campaign changes",
+    "Refreshing campaign state",
+  ],
+  validating_changes: [
+    "Validating changes",
+    "Checking updated plan",
+    "Running validation checks",
+    "Reviewing guardrails",
+    "Checking campaign constraints",
+  ],
+};
 
-// Enrich trace notes from real API response data
-export function buildAgentTrace(campaignData) {
-  const notes = [
-    `intent=${campaignData?.parsed?.campaign_intent || "—"} · target=${campaignData?.parsed?.target_segment_hint || "—"}`,
-    "rulebook eligibility checked",
-    `${campaignData?.segments?.length || "—"} segments · ${campaignData?.totalUsers?.toLocaleString() || "—"} eligible users`,
-    "model_confidence avg 0.88",
-    `Offers selected · ${[...new Set(campaignData?.segments?.map(s => s.tactic.offerId) || [])].length || "—"} unique offer(s)`,
-    `Plan drafted · ${campaignData?.segments?.length || "—"} segment cards`,
-    `Incremental: RO ${campaignData?.totalImpact?.toFixed(0) || "—"}`,
-    `${campaignData?.contentDrafts?.length || "—"} message drafts · approval_required=true`,
-    `${campaignData?.validations?.filter(v => v.level === "advisory").length || 0} advisories · ${campaignData?.validations?.filter(v => v.level === "error").length || 0} blocking`,
-  ];
+function randomLabel(group) {
+  const labels = ACTIVITY_LABELS[group];
+  return labels[Math.floor(Math.random() * labels.length)];
+}
 
-  return AGENT_TRACE_TEMPLATE.map((step, i) => ({
-    ...step,
-    note: notes[i] || "",
+function getActivityGroups(response) {
+  const type = response?.response_type;
+
+  if (type === "campaign_plan") {
+    return ["understanding_request", "finding_context", "reviewing_info", "reasoning_options", "updating_state", "validating_changes", "preparing_response"];
+  }
+  if (type === "plan_updated") {
+    return ["understanding_request", "finding_context", "updating_state", "reasoning_options", "validating_changes", "preparing_response"];
+  }
+  if (type === "answer") {
+    const isDrilldown = response.ui_action?.set_active_view === "segment_drilldown";
+    const isOfferOrComparison = /offer|alternative|next best/i.test(response.message || "");
+    if (isDrilldown || isOfferOrComparison) {
+      return ["understanding_request", "finding_context", "reviewing_info", "reasoning_options", "preparing_response"];
+    }
+    return ["understanding_request", "finding_context", "reviewing_info", "preparing_response"];
+  }
+  if (type === "clarification") {
+    return ["understanding_request", "reviewing_info", "preparing_response"];
+  }
+  if (type === "export_ready") {
+    return ["understanding_request", "finding_context", "reviewing_info", "validating_changes", "preparing_response"];
+  }
+  return ["understanding_request", "preparing_response"];
+}
+
+export function buildActivitySteps(response) {
+  return getActivityGroups(response).map((group) => ({
+    tool: randomLabel(group),
+    status: "ok",
+    ms: null,
+    note: "",
   }));
 }
 
-// MOCKED: Follow-up chat replies — the API has no /campaign/followup endpoint.
-// These are canned responses. Future work: route these to real backend endpoints.
-export function buildFollowupReplies(campaignData) {
-  const segs = campaignData?.segments || [];
-  const firstSeg = segs[0];
-  const firstSegId = firstSeg?.id || "—";
-  const firstSegName = firstSeg?.name || "—";
-
-  return {
-    "channel-why": {
-      trace: [
-        { tool: "Reviewing ML models and their scores", ms: 92,  status: "ok", note: `${firstSegId} · channel scores loaded` },
-        { tool: "explain_channel_tool",                ms: 680, status: "ok", note: "Rationale generated" },
-      ],
-      traceTotal: "2 tools · 0.77 s",
-      text: firstSeg
-        ? `For **${firstSegId}**, **${capitalize(firstSeg.bestChannel)}** scored **${(firstSeg.channelScoresRaw[firstSeg.bestChannel] || 0).toFixed(2)}** as the highest channel. Send window ${firstSeg.bestTime} matches peak engagement. Fatigue risk is *${firstSeg.fatigueRisk}*.`
-        : "Channel rationale not available.",
-      artifacts: firstSeg
-        ? [{ kind: "drawer", segId: firstSegId, drawerKind: "channel", label: "Open ML rationale →" }]
-        : [],
-    },
-    "filter": {
-      trace: [
-        { tool: "Finding the best segments", ms: 41, status: "ok", note: "Filter: churn_risk > 0.08" },
-      ],
-      traceTotal: "1 tool · 41 ms",
-      text: `${segs.filter(s => s.churnRisk >= 0.08).length} segment(s) have elevated churn risk. These may benefit from a retention-first approach before upsell.`,
-      artifacts: segs.filter(s => s.churnRisk >= 0.08).map(s => ({ kind: "seg", id: s.id, label: s.name })),
-    },
-    "regen": {
-      trace: [
-        { tool: "Generating campaign content", ms: 1820, status: "ok", note: `${firstSegId} · drafts regenerated` },
-        { tool: "Validating the campaign",     ms: 14,   status: "ok", note: "Re-flagged approval_required" },
-      ],
-      traceTotal: "2 tools · 1.83 s",
-      text: `Drafts remain flagged \`approval_required=true\`.`,
-      artifacts: [{ kind: "tab", id: "content", label: "Open Content drafts →" }],
-    },
-    "rulebook": {
-      trace: [
-        { tool: "Performing rule-book calculations", ms: 28, status: "ok", note: `intent=${campaignData?.parsed?.campaign_intent}` },
-      ],
-      traceTotal: "1 tool · 28 ms",
-      text: segs.length
-        ? `Rulebook matches: ${[...new Set(segs.map(s => `**${s.rulebookTrend}** → ${s.rulebookAction}`))].join("; ")}. All ${segs.length} segments have eligible intents for \`increase_arpu\`.`
-        : "Rulebook info unavailable.",
-      artifacts: [{ kind: "tab", id: "validation", label: "Open assumptions →" }],
-    },
-  };
-}
-
-function capitalize(str) {
-  if (!str) return "";
-  return str.charAt(0).toUpperCase() + str.slice(1);
+export function buildLoadingSteps() {
+  return ["understanding_request", "finding_context", "preparing_response"].map((group) => ({
+    tool: randomLabel(group),
+    status: "ok",
+    ms: null,
+    note: "",
+  }));
 }
 
 // MOCKED: Suggested follow-up chips — future work: generate these from LLM context.
