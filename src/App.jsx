@@ -379,11 +379,11 @@ function EmptyState({ onSend, setDraft }) {
     }}>
       <div>
         <div style={{
-          fontFamily: "var(--font-display)",
+          fontFamily: "Poppins, sans-serif",
           fontSize: 36,
           fontWeight: 360,
           letterSpacing: "-0.02em",
-          color: "var(--ink)",
+          color: "#6d6d6d",
           marginBottom: 12,
         }}>
           Campaign Workspace
