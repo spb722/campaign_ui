@@ -105,8 +105,19 @@ function ChannelDrawer({ seg }) {
   const allChannels = seg.channelScoresRaw
     ? Object.entries(seg.channelScoresRaw)
         .sort((a, b) => b[1] - a[1])
-        .map(([ch, score]) => ({ ch, score, primary: ch === seg.bestChannel }))
-    : seg.channels.map((c) => ({ ch: c.ch.toLowerCase(), score: c.score, primary: c.primary }));
+        .map(([ch, score]) => ({
+          ch,
+          score,
+          primary: ch === seg.bestChannel,
+          window: seg.channelTimeWindows?.[ch] ??
+            (ch === seg.bestChannel ? seg.bestTime : "10:00-18:00"),
+        }))
+    : seg.channels.map((c) => ({
+        ch: c.ch.toLowerCase(),
+        score: c.score,
+        primary: c.primary,
+        window: c.window,
+      }));
 
   const chLabel = (ch) => ch === "whatsapp" ? "WhatsApp" : ch === "outbound_call" ? "Outbound call" : ch.charAt(0).toUpperCase() + ch.slice(1);
 
@@ -123,7 +134,7 @@ function ChannelDrawer({ seg }) {
           {allChannels.map((c, i) => (
             <div key={i} className={`ml-row ${c.primary ? "is-primary" : ""}`}>
               <span>{chLabel(c.ch)}</span>
-              <span>{c.primary ? seg.bestTime : "Fallback"}</span>
+              <span>{c.window}</span>
               <Bar value={c.score * 100} tone={c.primary ? "accent" : "ink-soft"} />
               <Mono>{c.score.toFixed(2)}</Mono>
             </div>
@@ -146,6 +157,7 @@ function ChannelDrawer({ seg }) {
           <div><span>Confidence</span><Mono>{seg.modelConfidence?.toFixed(2)}</Mono></div>
           <div><span>Fatigue risk</span><Mono>{seg.fatigueRisk}</Mono></div>
           <div><span>Best time</span><Mono>{seg.bestTime}</Mono></div>
+          <div><span>Source</span><Mono dim>{seg.fallbackUsed ? "Fallback default" : "ML-score based"}</Mono></div>
         </div>
       </DrawerSection>
     </>

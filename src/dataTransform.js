@@ -23,7 +23,8 @@ function buildChannels(mlScore) {
 
   return sorted.map(([ch, score]) => ({
     ch: capitalize(ch === "whatsapp" ? "WhatsApp" : ch),
-    window: ch === best ? mlScore.best_time_window : "Fallback",
+    window: mlScore.channel_time_windows?.[ch] ??
+      (ch === best ? mlScore.best_time_window : "10:00-18:00"),
     score,
     primary: ch === best,
   }));
@@ -192,6 +193,8 @@ export function transformApiResponse(apiData) {
       allowedFamilies: rb.allowed_action_families,
       channels: buildChannels(ml),
       channelScoresRaw: ml.channel_scores,
+      channelTimeWindows: ml.channel_time_windows ?? {},
+      fallbackUsed: ml.fallback_used ?? false,
       bestChannel: ml.best_channel,
       bestTime: ml.best_time_window,
       fatigue: capitalize(ml.fatigue_risk),
