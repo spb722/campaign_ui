@@ -63,7 +63,7 @@ function buildTimeline(followupPlan) {
     }));
 }
 
-function buildValidations(validation, risks, warnings) {
+function buildValidations(validation) {
   const items = [];
 
   // Status from compliance fields
@@ -77,11 +77,6 @@ function buildValidations(validation, risks, warnings) {
     if (validation[key] === "passed") {
       items.push({ level: "ok", code: meta.ok, msg: meta.msg });
     }
-  });
-
-  // Risks as advisories
-  (risks || []).forEach((risk, i) => {
-    items.push({ level: "advisory", code: `RISK_${i + 1}`, msg: risk });
   });
 
   // Hard errors
@@ -221,7 +216,7 @@ export function transformApiResponse(apiData) {
 
   const contentDrafts = buildContentDrafts(data.content_plan || [], segMap);
 
-  const validations = buildValidations(data.validation || {}, data.risks, apiData.warnings);
+  const validations = buildValidations(data.validation || {});
 
   const assumptions = buildAssumptions(data);
 
