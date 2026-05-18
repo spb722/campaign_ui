@@ -75,7 +75,7 @@ export function ContentView({ drafts }) {
 
           <div className={`device device-${channelClass}`}>
             <div className="device-header">
-              <span>Oman Telecom</span>
+              <span></span>
               <Mono dim>Now</Mono>
             </div>
             <div className="bubble">

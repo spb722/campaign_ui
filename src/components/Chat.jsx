@@ -158,7 +158,7 @@ export function Chat({ messages, running, activeIdx, onSend, onArtifact, suggest
           <div>
             <div className="chat-title-t">Campaign agent</div>
             <div className="chat-title-s">
-              <Dot tone="ok" /> ready · Oman Telecom
+              <Dot tone="ok" /> ready
             </div>
           </div>
         </div>
