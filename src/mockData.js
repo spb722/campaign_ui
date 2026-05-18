@@ -102,7 +102,13 @@ export function buildActivitySteps(response) {
 }
 
 export function buildLoadingSteps() {
-  return ["understanding_request", "finding_context", "preparing_response"].map((group) => ({
+  return [
+    "understanding_request",
+    "finding_context",
+    "reviewing_info",
+    "reasoning_options",
+    "preparing_response",
+  ].map((group) => ({
     tool: randomLabel(group),
     status: "ok",
     ms: null,

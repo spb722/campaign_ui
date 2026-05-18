@@ -38,7 +38,9 @@ function shade(hex, amt) {
 
 export default function App() {
   // Session
-  const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionId] = useState(() =>
+    crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
   const [currentCampaignId, setCurrentCampaignId] = useState(null);
 
   // Campaign state
@@ -104,23 +106,40 @@ export default function App() {
     setMessages((prev) => [...prev, userMsg, agentMsg]);
 
     try {
-      // Animate loading steps while API call is in flight
+      const TARGET_MS = 25_000;
+      const MIN_STEP_MS = 800;
+      const FAST_FWD_MS = 120;
+
+      let apiDone = false;
+
       const tracePromise = new Promise((resolve) => {
         let i = 0;
+        const startTime = Date.now();
         setActiveStep(0);
+
         const tick = () => {
-          if (i >= loadingSteps.length) { resolve(); return; }
           setActiveStep(i);
-          i += 1;
-          setTimeout(tick, 400);
+          i++;
+          if (i >= loadingSteps.length) { resolve(); return; }
+
+          if (apiDone) {
+            setTimeout(tick, FAST_FWD_MS);
+            return;
+          }
+
+          const elapsed = Date.now() - startTime;
+          const stepsLeft = loadingSteps.length - i;
+          const interval = Math.max(MIN_STEP_MS, (TARGET_MS - elapsed) / stepsLeft);
+          setTimeout(tick, interval);
         };
+
         tick();
       });
 
-      const [response] = await Promise.all([
-        sendChatMessage(sessionId, text, currentCampaignId),
-        tracePromise,
-      ]);
+      const apiPromise = sendChatMessage(sessionId, text, currentCampaignId);
+      apiPromise.then(() => { apiDone = true; });
+
+      const [response] = await Promise.all([apiPromise, tracePromise]);
 
       const { response_type, message, data, ui_action } = response;
       const activitySteps = buildActivitySteps(response);
