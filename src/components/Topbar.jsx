@@ -14,9 +14,6 @@ export function Topbar({ campaignId, campaignTitle }) {
         <strong>{campaignId ? `${campaignId} · ARPU lift` : "New campaign"}</strong>
       </div>
       <div className="topbar-spacer" />
-      <div className="topbar-meta">
-        <span><Mono>Gemma-fine-tuned</Mono> · Oman Telecom</span>
-      </div>
       <div className="topbar-actions">
         <button className="btn btn-ghost btn-sm">
           <Icon name="download" size={11} />Export

@@ -145,7 +145,6 @@ function ChannelDrawer({ seg }) {
         <div className="meta-grid">
           <div><span>Confidence</span><Mono>{seg.modelConfidence?.toFixed(2)}</Mono></div>
           <div><span>Fatigue risk</span><Mono>{seg.fatigueRisk}</Mono></div>
-          <div><span>Source</span><Mono dim>mock_ml_scores</Mono></div>
           <div><span>Best time</span><Mono>{seg.bestTime}</Mono></div>
         </div>
       </DrawerSection>

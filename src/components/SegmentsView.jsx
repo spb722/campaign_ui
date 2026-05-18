@@ -92,7 +92,6 @@ function SegmentCard({ seg, isSelected, onSelect, onOpenWhy }) {
         <div className="conf">
           <span className="conf-label">ML confidence</span>
           <Mono>{seg.modelConfidence.toFixed(2)}</Mono>
-          <span className="conf-mock">mock</span>
         </div>
         <button className="btn btn-ghost btn-sm" onClick={() => onSelect(seg.id)}>
           Drilldown <Icon name="arrow" size={11} />
