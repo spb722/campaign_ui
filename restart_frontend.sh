@@ -2,7 +2,7 @@
 set -e
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG="$DIR/frontend.log"
+LOG="$DIR/app.log"
 
 echo "==> Stopping existing vite process..."
 pkill -f "vite" 2>/dev/null && echo "    stopped." || echo "    (none running)"
@@ -15,5 +15,5 @@ echo "==> Installing dependencies..."
 npm install --silent
 
 echo "==> Starting frontend..."
-nohup npm run dev > "$LOG" 2>&1 &
+nohup npm run dev -- --host 0.0.0.0 --port 8501 > "$LOG" 2>&1 &
 echo "    PID $! — logs: $LOG"
