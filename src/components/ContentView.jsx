@@ -1,13 +1,40 @@
 import { useState } from "react";
-import { Icon, Pill, Mono, SectionLabel } from "./atoms.jsx";
+import { Icon, Pill, Mono, SectionLabel, Spinner } from "./atoms.jsx";
+import { regenerateContent } from "../api.js";
 
-export function ContentView({ drafts }) {
+export function ContentView({ drafts, campaignId, onRegenerated }) {
   const [selected, setSelected] = useState(0);
+  const [showInstruction, setShowInstruction] = useState(false);
+  const [instruction, setInstruction] = useState("");
+  const [regenerating, setRegenerating] = useState(false);
+  const [regenError, setRegenError] = useState(null);
+
   const draft = drafts[selected] || drafts[0];
 
   if (!draft) return <div style={{ color: "var(--ink-3)" }}>No content drafts available.</div>;
 
   const channelClass = draft.channel.toLowerCase().replace(/\s/g, "");
+
+  const handleRegenerate = async () => {
+    setRegenerating(true);
+    setRegenError(null);
+    try {
+      const payload = {
+        regenerate_scope: "content_only",
+        segment_id: draft.segmentId,
+        channel: draft.channel.toLowerCase(),
+      };
+      if (instruction.trim()) payload.user_instruction = instruction.trim();
+      const response = await regenerateContent(campaignId, payload);
+      onRegenerated(response.data);
+      setShowInstruction(false);
+      setInstruction("");
+    } catch (err) {
+      setRegenError(err.message);
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   return (
     <div className="content">
@@ -34,7 +61,10 @@ export function ContentView({ drafts }) {
         <SectionLabel
           action={
             <div className="content-actions">
-              <button className="btn btn-ghost btn-sm">
+              <button
+                className={`btn btn-ghost btn-sm${showInstruction ? " is-active" : ""}`}
+                onClick={() => { setShowInstruction((v) => !v); setRegenError(null); }}
+              >
                 <Icon name="refresh" size={11} />Regenerate
               </button>
               <button
@@ -48,6 +78,54 @@ export function ContentView({ drafts }) {
         >
           Preview
         </SectionLabel>
+
+        {showInstruction && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 0 12px" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <textarea
+                autoFocus
+                rows={1}
+                placeholder='Optional: "Make it shorter and more premium."'
+                value={instruction}
+                onChange={(e) => setInstruction(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleRegenerate();
+                }}
+                disabled={regenerating}
+                style={{
+                  flex: 1,
+                  resize: "vertical",
+                  minHeight: 32,
+                  padding: "6px 8px",
+                  fontSize: 12,
+                  fontFamily: "inherit",
+                  borderRadius: 6,
+                  border: "1px solid var(--line)",
+                  background: "var(--surface)",
+                  color: "var(--ink-1)",
+                  outline: "none",
+                }}
+              />
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={handleRegenerate}
+                disabled={regenerating}
+                title="Regenerate (⌘Enter)"
+              >
+                {regenerating ? <Spinner small /> : <Icon name="refresh" size={11} />}
+              </button>
+            </div>
+            {regenError && (
+              <div style={{ fontSize: 11, color: "var(--err, #c73d2a)" }}>{regenError}</div>
+            )}
+            <button
+              style={{ fontSize: 11, color: "var(--ink-3)", background: "none", border: "none", padding: 0, cursor: "pointer", alignSelf: "flex-start" }}
+              onClick={() => { setShowInstruction(false); setInstruction(""); setRegenError(null); }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
 
         <div className="preview">
           <div className="preview-meta">

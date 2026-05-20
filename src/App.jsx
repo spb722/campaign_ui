@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { sendChatMessage } from "./api.js";
-import { transformApiResponse } from "./dataTransform.js";
+import { transformApiResponse, buildContentDrafts, buildValidations } from "./dataTransform.js";
 import { buildActivitySteps, buildLoadingSteps, buildFollowups, EXAMPLE_PROMPTS } from "./mockData.js";
 import { Icon, Pill, Mono, Dot } from "./components/atoms.jsx";
 import { Chat } from "./components/Chat.jsx";
@@ -340,7 +340,20 @@ export default function App() {
                 />
               )}
               {tab === "content" && (
-                <ContentView drafts={campaignData.contentDrafts} />
+                <ContentView
+                  drafts={campaignData.contentDrafts}
+                  campaignId={currentCampaignId}
+                  onRegenerated={(regenData) => {
+                    const segMap = {};
+                    campaignData.segments.forEach((s) => { segMap[s.id] = s.name; });
+                    setCampaignData((prev) => ({
+                      ...prev,
+                      version: regenData.version ?? prev.version,
+                      contentDrafts: buildContentDrafts(regenData.content_plan || [], segMap),
+                      validations: buildValidations(regenData.validation || {}),
+                    }));
+                  }}
+                />
               )}
               {tab === "validation" && (
                 <ValidationView

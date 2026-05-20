@@ -64,7 +64,7 @@ function buildTimeline(followupPlan) {
     }));
 }
 
-function buildValidations(validation) {
+export function buildValidations(validation) {
   const items = [];
 
   // Status from compliance fields
@@ -113,7 +113,7 @@ function draftTitle(copy) {
   return first.length <= 55 ? first : first.slice(0, 52) + "…";
 }
 
-function buildContentDrafts(contentPlan, segMap) {
+export function buildContentDrafts(contentPlan, segMap) {
   return contentPlan.map((cp) => ({
     segmentId: cp.segment_id,
     segmentName: segMap[cp.segment_id] || cp.segment_id,
