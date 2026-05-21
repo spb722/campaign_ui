@@ -239,6 +239,7 @@ export function transformApiResponse(apiData) {
     validations,
     assumptions,
     planTimeline,
+    schedule: data.schedule ?? null,
     projection: data.projection,
     totalUsers,
     totalImpact,

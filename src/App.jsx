@@ -11,6 +11,7 @@ import { PlanView } from "./components/PlanView.jsx";
 import { ContentView } from "./components/ContentView.jsx";
 import { ValidationView } from "./components/ValidationView.jsx";
 import { ExportView } from "./components/ExportView.jsx";
+import { ScheduleView } from "./components/ScheduleView.jsx";
 import { WhyDrawer } from "./components/WhyDrawer.jsx";
 
 const VIEW_MAP = {
@@ -217,6 +218,7 @@ export default function App() {
         { id: "plan",       label: "Plan",        count: campaignData.planTimeline.length },
         { id: "content",    label: "Content",     count: campaignData.contentDrafts.length },
         { id: "validation", label: "Validation",  count: campaignData.validations.length },
+        { id: "schedule",   label: "Schedule",    count: null },
         { id: "export",     label: "Export",      count: null },
       ]
     : [];
@@ -359,6 +361,13 @@ export default function App() {
                 <ValidationView
                   validations={campaignData.validations}
                   assumptions={campaignData.assumptions}
+                />
+              )}
+              {tab === "schedule" && (
+                <ScheduleView
+                  schedule={campaignData.schedule}
+                  planTimeline={campaignData.planTimeline}
+                  segments={campaignData.segments}
                 />
               )}
               {tab === "export" && <ExportView campaignData={campaignData} />}
