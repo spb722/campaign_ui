@@ -124,9 +124,9 @@ export function ScheduleView({ schedule, planTimeline, segments }) {
         <SectionLabel count={waves.length}>Send Waves</SectionLabel>
         <div className="valid-list">
           {waves.map((w, i) => (
-            <div key={i} className="valid-row valid-ok">
+            <div key={i} className="valid-row valid-ok" style={{ gridTemplateColumns: "40px 1fr" }}>
               <div className="valid-gutter">
-                <Mono dim style={{ fontSize: 10, minWidth: 32 }}>D+{w.dayOffset}</Mono>
+                <Mono dim style={{ fontSize: 10 }}>D+{w.dayOffset}</Mono>
               </div>
               <div className="valid-body">
                 <div className="valid-head">

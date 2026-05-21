@@ -213,7 +213,7 @@ export function transformApiResponse(apiData) {
     { label: "Target base", value: totalUsers.toLocaleString(), sub: "eligible users", tone: "neutral" },
     { label: "Avg ARPU", value: `RO ${weightedArpu.toFixed(2)}`, sub: "weighted avg · current", tone: "neutral" },
     { label: "Target ARPU", value: `RO ${targetArpu.toFixed(2)}`, sub: `+${data.parsed_objective?.target_lift_value ?? 0}% lift target`, tone: "neutral" },
-    { label: "Projected impact", value: `RO ${totalImpact.toLocaleString("en", { maximumFractionDigits: 0 })}`, sub: "incremental revenue, 30d", tone: "hero" },
+    { label: "Projected impact", value: `RO ${totalImpact.toLocaleString("en", { maximumFractionDigits: 0 })}`, sub: `incremental revenue, ${data.parsed_objective?.time_window_value ?? 30}d`, tone: "hero" },
     { label: "Est. offer cost", value: `RO ${estCost.toLocaleString("en", { maximumFractionDigits: 0 })}`, sub: "cost per user × conversions", tone: "neutral" },
   ];
 
